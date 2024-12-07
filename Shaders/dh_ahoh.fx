@@ -48,43 +48,46 @@ bool inScreen(float2 coords) {
 
 
     								
-void PS_AhOh(in float4 position : SV_Position, in float2 coords : TEXCOORD, out float2 outPixel : SV_Target) {
-	float3 coordsInt = float3(coords * int2(BUFFER_WIDTH,BUFFER_HEIGHT),ReShade::GetLinearizedDepth(coords));
-	uint seed = (coordsInt.x+coordsInt.y*BUFFER_WIDTH+(bStaticNoise?0:random))%(BUFFER_WIDTH*BUFFER_HEIGHT); 
-	
-	float AO;
-	
-	bool sky = coordsInt.z>0.999;
-	if(sky) {
-		AO = 1;
-	} else {
-		float d;
-		float2 currentCoords;
-		
-		float dir;
-		float2 delta;
-		int validSamples = 0;
-		
-		for(int s=1;s<=iSamples;s++) {
-			dir = randomValue(seed)*2*PI;
-			delta = float2(cos(dir),sin(dir));
-		
-			float r = iRadius*s*randomValue(seed)/iSamples;
-			
-			currentCoords = float2(coordsInt.xy+delta*r)/float2(BUFFER_WIDTH,BUFFER_HEIGHT);
-			if(!inScreen(currentCoords)) continue;
-			float depth = ReShade::GetLinearizedDepth(currentCoords);
-			if(depth+0.21*coordsInt.z<coordsInt.z) continue;
-			d = depth-coordsInt.z+1.0/RESHADE_DEPTH_LINEARIZATION_FAR_PLANE;
-			validSamples++;
-			AO += saturate(d*RESHADE_DEPTH_LINEARIZATION_FAR_PLANE);
-			
-			
-		}
-		AO = validSamples>0 ? AO/validSamples : 1;
-	}
-	
-	outPixel = float2(AO,sky ? 0 : 1);
+void PS_AhOh(in float4 position : SV_Position, in float2 coords : TEXCOORD, out float2 outPixel : SV_Target)
+{
+    float3 coordsInt = float3(coords * int2(BUFFER_WIDTH, BUFFER_HEIGHT), ReShade::GetLinearizedDepth(coords));
+    uint seed = (coordsInt.x + coordsInt.y * BUFFER_WIDTH + (bStaticNoise ? 0 : random)) % (BUFFER_WIDTH * BUFFER_HEIGHT);
+    
+    float AO = 0.0;
+    bool sky = coordsInt.z > 0.999;
+    
+    if (sky)
+    {
+        AO = 1.0;
+    }
+    else
+    {
+        float dir;
+        float2 delta;
+        int validSamples = 0;
+        
+        for (int s = 1; s <= iSamples; s++)
+        {
+            dir = randomValue(seed) * 2 * PI;
+            delta = float2(cos(dir), sin(dir));
+            float r = iRadius * s * randomValue(seed) / iSamples;
+            float2 currentCoords = float2(coordsInt.xy + delta * r) / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+            
+            if (!inScreen(currentCoords))
+                continue;
+            
+            float depth = ReShade::GetLinearizedDepth(currentCoords);
+            if (depth + 0.21 * coordsInt.z < coordsInt.z)
+                continue;
+            
+            AO += saturate((depth - coordsInt.z + 1.0 / RESHADE_DEPTH_LINEARIZATION_FAR_PLANE) * RESHADE_DEPTH_LINEARIZATION_FAR_PLANE);
+            validSamples++;
+        }
+        
+        AO = validSamples > 0 ? AO / validSamples : 1.0;
+    }
+    
+    outPixel = float2(AO, sky ? 0 : 1);
 }
 
 void PS_Denoise(in float4 position : SV_Position, in float2 coords : TEXCOORD, out float2 outPixel : SV_Target) {
